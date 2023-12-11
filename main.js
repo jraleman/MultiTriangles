@@ -1,15 +1,14 @@
-import WindowManager from './WindowManager.js'
+import WindowManager from './utils/WindowManager.js'
 
 const t = THREE;
+const windowManager = new WindowManager();
+let initialized = false;
 
 let camera, scene, renderer, world;
 let pixR = window.devicePixelRatio ? window.devicePixelRatio : 1;
 let triangles = [];
 let sceneOffsetTarget = {x: 0, y: 0};
 let sceneOffset = {x: 0, y: 0};
-
-let windowManager;
-let initialized = false;
 
 let today = new Date();
 today.setHours(0);
@@ -26,7 +25,7 @@ if (new URLSearchParams(window.location.search).get("clear")) {
   localStorage.clear();
 }
 else {
-  // this code is essential to circumvent that some browsers preload the content of some pages before you actually hit the url
+  // Circumvents that some browsers preload the content of some pages before you actually hit the url
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState != 'hidden' && !initialized) {
       init();
@@ -42,7 +41,7 @@ else {
   function init() {
     initialized = true;
 
-    // add a short timeout because window.offsetX reports wrong values before a short period 
+    // Short timeout because window.offsetX reports wrong values before a short period 
     setTimeout(() => {
       setupScene();
       setupWindowManager();
@@ -68,15 +67,9 @@ else {
   }
 
   function setupWindowManager() {
-    windowManager = new WindowManager();
     windowManager.setWinShapeChangeCallback(updateWindowShape);
     windowManager.setWinChangeCallback(windowsUpdated);
-    // here you can add your custom metadata to each windows instance
-    let metaData = {foo: "bar"};
-    
-    // this will init the windowmanager and add this window to the centralised pool of windows	
-    windowManager.init(metaData);
-    // call update windows initially (it will later be called by the win change callback)
+    windowManager.init({ type: "triangle" }); // Add your custom metadata to each windows instance
     windowsUpdated();
   }
 
@@ -85,12 +78,12 @@ else {
   }
 
   function fillWithPoints(geometry, count) {
-    var dummyTarget = new t.Vector3(); // to prevent logging of warnings from ray.at() method
-    var ray = new t.Ray()
+    const dummyTarget = new t.Vector3(); // Prevents logging of warnings from ray.at() method
+    const ray = new t.Ray()
     geometry.computeBoundingBox();
-    let bbox = geometry.boundingBox;
-    let points = [];
-    var dir = new t.Vector3(1, 1, 1).normalize();
+    const bbox = geometry.boundingBox;
+    const points = [];
+    const dir = new t.Vector3(1, 1, 1).normalize();
     let counter = 0;
 
     while(counter < count) {
@@ -101,7 +94,7 @@ else {
       );
       if (isInside(v)) {
         points.push(v);
-        counter++;
+        counter += 1;
       }
     }
     
@@ -111,12 +104,12 @@ else {
       let pos = geometry.attributes.position;
       let faces = pos.count / 3;
       let vA = new t.Vector3(), vB = new t.Vector3(), vC = new t.Vector3();
-      for(let i = 0; i < faces; i++) {
+      for(let i = 0; i < faces; i += 1) {
         vA.fromBufferAttribute(pos, i * 3 + 0);
         vB.fromBufferAttribute(pos, i * 3 + 1);
         vC.fromBufferAttribute(pos, i * 3 + 2);
         if (ray.intersectTriangle(vA, vB, vC, false, dummyTarget)) {
-          counter++;
+          counter += 1;
         }
       }
       return counter % 2 == 1;
@@ -126,14 +119,14 @@ else {
 
   function updateNumberOftriangles() {
     let wins = windowManager.getWindows();
-    // remove all triangles
+    // Removes all triangles
     triangles.forEach((c) => {
       world.remove(c);
     })
     triangles = [];
 
-    // add new triangles based on the current window setup
-    for (let i = 0; i < wins.length; i++) {
+    // Add new triangles based on the current window setup
+    for (let i = 0; i < wins.length; i += 1) {
       const color = new t.Color();
       color.setHSL(i * .1, 1.0, .5);
       const geometry = new t.BufferGeometry();
@@ -146,9 +139,9 @@ else {
       geometry.setAttribute('position', new t.Float32BufferAttribute(positions, 3));
       geometry.computeVertexNormals();
       const mesh = new t.Mesh(geometry, material);
-      var pointsGeom = fillWithPoints(geometry, 10000);
-      var pointsMat = new t.PointsMaterial({color, size: 0.25});
-      var points = new t.Points(pointsGeom, pointsMat);
+      const pointsGeom = fillWithPoints(geometry, 10000);
+      const pointsMat = new t.PointsMaterial({color, size: 0.25});
+      const points = new t.Points(pointsGeom, pointsMat);
       mesh.add(points);
       world.add(mesh);
       triangles.push(mesh);
@@ -156,8 +149,7 @@ else {
   }
 
   function updateWindowShape(easing = true) {
-    
-    // storing the actual offset in a proxy that we update against in the render function
+    // Storing the actual offset in a proxy that we update against in the render function
     sceneOffsetTarget = {x: -window.screenX, y: -window.screenY};
     if (!easing) {
       sceneOffset = sceneOffsetTarget;
@@ -167,19 +159,16 @@ else {
   function render() {
     let t = getTime();
     windowManager.update();
-    
-    // calculate the new position based on the delta between current offset and new offset times a falloff value (to create the nice smoothing effect)
+    // Calculate the new position based on the delta between current offset and new offset times a falloff value (to create the nice smoothing effect)
     let falloff = .05;
     sceneOffset.x = sceneOffset.x + ((sceneOffsetTarget.x - sceneOffset.x) * falloff);
     sceneOffset.y = sceneOffset.y + ((sceneOffsetTarget.y - sceneOffset.y) * falloff);
-    
-    // set the world position to the offset
+    // Set the world position to the offset
     world.position.x = sceneOffset.x;
     world.position.y = sceneOffset.y;
     let wins = windowManager.getWindows();
-
-    // loop through all our triangles and update their positions based on current window positions
-    for (let i = 0; i < triangles.length; i++) {
+    // Loop through all our triangles and update their positions based on current window positions
+    for (let i = 0; i < triangles.length; i += 1) {
       let cube = triangles[i];
       let win = wins[i];
       let _t = t; // + i * .2;
@@ -194,11 +183,10 @@ else {
     requestAnimationFrame(render);
   }
 
-  // resize the renderer to fit the window size
+  // Resize the renderer to fit the window size
   function resize () {
-    let width = window.innerWidth;
-    let height = window.innerHeight
-    
+    const width = window.innerWidth;
+    const height = window.innerHeight
     camera = new t.OrthographicCamera(0, width, 0, height, -10000, 10000);
     camera.updateProjectionMatrix();
     renderer.setSize( width, height );
